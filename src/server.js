@@ -1,35 +1,39 @@
-const express = require("express")
-const { main } = require("./config/db")
-const app = express()
-const cookieParser = require("cookie-parser")
-const { User } = require("./models/user.model")
-app.use(cookieParser())
+const express = require("express");
+require("dotenv").config();
+const transactionRoutes = require("./routes/transaction.routes");
+const history = require("./routes/transaction.routes");
+const { main } = require("./config/db");
+const authRoutes = require("./routes/auth.routes");
+const topup = require("./routes/wallet.routes");;
+const app = express();
+
+// Middleware
+app.use(express.json());
+
+// Routes
+app.use("/api/auth", authRoutes);
+app.use("/api/transaction", transactionRoutes);
+app.use("/api/history", history);
+app.use("/api/wallet", topup);
 
 
+// Start server
 async function start() {
+    try {
 
-    await main();
-    console.log("Connected to MongoDB")
+        await main();
+        console.log("MongoDB Connected");
 
-    app.get("/set", (req, res) => {
-        res.cookie("username", "udhay");
-        res.send("Cookie has been set")
-    })
+        app.listen(7000, () => {
+            console.log("Server running on port 7000");
+        });
 
+    } catch (error) {
 
+        console.log("Database connection failed");
+        console.log(error.message);
 
-    app.get("/get", (req, res) => {
-        console.log(req.cookies)
-        res.send(req.cookies);
-    })
-
-    app.listen(7000, () => {
-        console.log("Server is running on port 7000")
-    })
-
+    }
 }
-
-
-
 
 start();

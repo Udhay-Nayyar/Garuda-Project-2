@@ -1,100 +1,86 @@
-const User = require('../models/user.model');
-const jwt = require('jsonwebtoken');
+const User = require("../models/user.model");
 
-const sendTokenCookie = (user, statusCode, res) => {
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-        expiresIn: process.env.JWT_EXPIRES_IN
-    });
-    res.status(statusCode).cookie('token', token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        maxAge: process.env.JWT_EXPIRES_IN * 24 * 60 * 60 * 1000
-    }).json({
-        success: true,
-        token
-    });
-    res.status(statusCode).json({
-        success: true,
-        user: {
-            id: user._id,
-            name: user.name,
-            email: user.email,
-            balance: user.balance
-        },
-        token
-    });
-};
 
+// Register
 const register = async (req, res) => {
+
     try {
+
         const { name, email, password } = req.body;
-        if(!name || !email || !password) {
-            return res.status(400).json({
-                success: false,
-                message: 'Please provide all required fields'
-            });
+
+        const userExist = await User.findOne({ email });
+
+        if (userExist) {
+            return res.send("User already exists");
         }
-        const existingUser = await User.findOne({ email });
-        if (existingUser) {
-            return res.status(400).json({
-                success: false,
-                message: 'User already exists'
-            });
-        }
-        const user = await User.create(req.body);
-        sendTokenCookie(user, 201, res);
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: error.message
+
+        const user = await User.create({
+            name,
+            email,
+            password
         });
+
+        res.json({
+            message: "Registration successful",
+            user
+        });
+
     }
+    catch (err) {
+
+        res.status(500).json({
+            message: err.message
+        });
+
+    }
+
 };
 
+
+// Login
 const login = async (req, res) => {
+
     try {
+
         const { email, password } = req.body;
-        if(!email || !password) {
-            return res.status(400).json({
-                success: false,
-                message: 'Please provide email and password'
-            });
+
+        const user = await User.findOne({ email }).select("+password");
+
+        if (!user) {
+            return res.send("Invalid email");
         }
-        const user = await User.findOne({ email }).select('+password');
-        if(!user) {
-            return res.status(401).json({
-                success: false,
-                message: 'Invalid email or password'
-            });
+
+        const match = await user.comparePassword(password);
+
+        if (!match) {
+            return res.send("Wrong password");
         }
-        const isMatch = await user.comparePassword(password);
-        if(!isMatch) {
-            return res.status(401).json({
-                success: false,
-                message: 'Invalid email or password'
-            });
-        }
-        sendTokenCookie(user, 200, res);
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: error.message
+
+        res.json({
+            message: "Login successful"
         });
+
     }
+    catch (err) {
+
+        res.status(500).json({
+            message: err.message
+        });
+
+    }
+
 };
 
+
+// Logout
 const logout = (req, res) => {
-    res.cookie('token', '', {
-        httpOnly: true,
-        expires: new Date(0),
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict'
-    }).json({
-        success: true,
-        message: 'Logged out successfully'
+
+    res.json({
+        message: "Logged out"
     });
+
 };
+
 
 module.exports = {
     register,
